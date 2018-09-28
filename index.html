@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <link rel='stylesheet' type='text/css' href='' />
+        <style>
+body, textarea {
+  text-rendering:optimizeLegibility;
+  background:#fff;
+  font:normal 13px/15px 'Helvetica';
+  margin:0;
+  padding:0;
+  }
+textarea {
+  float:left;
+  height:300px;
+  width:140px;
+  }
+#chart {
+    float:left;
+}
+circle {
+    fill:#9DD9D2 ;
+}
+text { fill: #000; }
+path.link {
+  fill: none;
+  stroke: #999;
+  stroke-width: 2px;
+}
+</style>
+    </head>
+     <body>
+        <input id='input'></input>
+        <div id='chart'></div>
+        <script src="https://d3js.org/d3.v2.js", charset="utf-8"></script>
+<script>
+var m = [20, 120, 20, 120],
+    w = 490 - m[1] - m[3],
+    h = 300 - m[0] - m[2],
+    i = 0,
+    root,
+    prevSearches = "",
+    currentTrie;
+
+var tree = d3.layout.tree()
+    .size([h, w]);
+
+var diagonal = d3.svg.diagonal()
+    .projection(function(d) { return [d.y, d.x]; });
+
+function d3ize(tree, n) {
+    var nt = {name: n || ''};
+    if (Object.keys(tree).length) {
+        nt.children = [];
+        for (var k in tree) {
+            nt.children.push(d3ize(tree[k], k));
+        }
+    }
+    return nt;
+}
+
+function trie(words) {
+    var trie = {};
+    var numberOfWords = words.length
+    for (var word = 0; word < numberOfWords; word++) {
+        var pos = trie;
+        for (var character = 0; character < words[word].length; character++) {
+            if (pos[words[word][character]] === undefined) {
+                pos[words[word][character]] = {};
+            }
+            pos = pos[words[word][character]];
+        }
+    }
+    currentTrie = trie;
+    console.log("Returning Trie "+JSON.stringify(trie))
+    return trie;
+}
+
+var vis = d3.select("#chart").append("svg:svg")
+    .attr("width", w + m[1] + m[3])
+    .attr("height", h + m[0] + m[2])
+  .append("svg:g")
+    .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+
+function update() {
+  var duration = d3.event && d3.event.altKey ? 5000 : 500;
+
+  // Compute the new tree layout.
+  var nodes = tree.nodes(root).reverse();
+
+  // Normalize for fixed-depth.
+  nodes.forEach(function(d) { d.y = d.depth * 20; });
+
+  // Update the nodes…
+  var node = vis.selectAll("g.node")
+      .data(nodes, function(d) { return d.id || (d.id = ++i); });
+
+  // Enter any new nodes at the parent's previous position.
+  var nodeEnter = node.enter().append("svg:g")
+      .attr("class", "node");
+
+  nodeEnter.append("svg:circle");
+
+  nodeEnter.append("svg:text")
+      .attr("x", function(d) { return 0; })
+      .attr("dy", function(d) { return 3; })
+      .attr("text-anchor", function(d) { return "middle"; })
+      .text(function(d) { return d.name; });
+
+  // Transition nodes to their new position.
+  var nodeUpdate = node.attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+  nodeUpdate.select("circle")
+      .attr("r", 9);
+
+  var link = vis.selectAll("path.link")
+      .data(tree.links(nodes), function(d) { return d.target.id; });
+
+  link.enter().insert("svg:path", "g")
+      .attr("class", "link")
+      .attr("d", diagonal);
+
+  link.transition()
+      .duration(duration)
+      .attr("d", diagonal);
+
+  link.exit().remove();
+  node.exit().remove();
+}
+
+function getAutoCompleteStringsForString(input) {
+  console.log(JSON.stringify(currentTrie))
+  console.log(currentTrie[input[0]])
+  console.log(input)
+}
+
+function run(value) {
+    console.log("Run with "+value)
+    root = d3ize(trie(value.split(' ')));
+    root.x0 = h / 2;
+    root.y0 = 0;
+    update(root);
+}
+
+//Detec key strokes in input area
+temp = ""
+d3.select('#input').on('keyup', function() {
+    console.log("Input is " + this.value)
+    console.log("Trie is " + JSON.stringify(currentTrie))
+    console.log("GETTING SUGGESTIONS")
+    getAutoCompleteStringsForString(this.value)
+    if(event.key == 'Enter'){
+       console.log("Hit enter with " + this.value);
+       console.log("All searchers " + prevSearches + temp);
+       prevSearches = prevSearches + ' ' + this.value;
+       run(prevSearches);
+       this.value = ''
+    }
+});
+
+
+//Set up first text
+sample_text = 'type.here';
+var interi = 0, inter = window.setInterval(function() {
+    d3.select('#input').property('value', sample_text.slice(0, interi));
+    run(sample_text.slice(0, interi));
+    interi++;
+    if (interi > sample_text.length) window.clearInterval(inter);
+}, 100);
+
+</script>
+    </body>
+</html>
