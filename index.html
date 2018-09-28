@@ -31,7 +31,8 @@ path.link {
 </style>
     </head>
      <body>
-        <input id='input'></input>
+        <input id='input' maxlength="15"></input>
+        <p id='suggestions'></p>
         <div id='chart'></div>
         <script src="https://d3js.org/d3.v2.js", charset="utf-8"></script>
 <script>
@@ -129,15 +130,53 @@ function update() {
   node.exit().remove();
 }
 
+function getPath(object) {
+    function iter(o, p)  {
+        var keys = Object.keys(o);
+        if (keys.length) {
+            return keys.forEach(function (k) {
+                iter(o[k], p.concat(k));        
+            });
+        }
+        result.push(p);
+    }
+    
+    var result = [];
+    iter(object, []);
+    return result;
+}
+
 function getAutoCompleteStringsForString(input) {
-  console.log(JSON.stringify(currentTrie))
-  console.log(currentTrie[input[0]])
-  console.log(input)
+  restOfTrieFollowingInput = currentTrie
+  i=0
+  while(i < input.length) {
+      try{
+        restOfTrieFollowingInput = restOfTrieFollowingInput[input[i]]
+      }
+      catch(TypeError){
+        restOfTrieFollowingInput = {}
+      }
+      console.log("= " + input[i])
+      i++;
+  }
+  if(restOfTrieFollowingInput){
+    allPaths = getPath(restOfTrieFollowingInput);
+    allPathsAsString = ""
+    allPaths.forEach(function(entry){
+      allPathsAsString = input + allPathsAsString + entry.join('') + "\n";
+    });
+    document.getElementById('suggestions').innerHTML = allPathsAsString
+    console.log(allPathsAsString)
+  }else{
+    document.getElementById('suggestions').innerHTML = ''
+  }
+  console.log(restOfTrieFollowingInput)
+  // console.log(currentTrie[input[0]][input[1]])
 }
 
 function run(value) {
     console.log("Run with "+value)
-    root = d3ize(trie(value.split(' ')));
+    root = d3ize(trie(value.split('.')));
     root.x0 = h / 2;
     root.y0 = 0;
     update(root);
@@ -153,7 +192,7 @@ d3.select('#input').on('keyup', function() {
     if(event.key == 'Enter'){
        console.log("Hit enter with " + this.value);
        console.log("All searchers " + prevSearches + temp);
-       prevSearches = prevSearches + ' ' + this.value;
+       prevSearches = prevSearches + '.' + this.value;
        run(prevSearches);
        this.value = ''
     }
